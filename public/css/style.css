@@ -1,0 +1,62 @@
+:root {
+    color-scheme: light dark;
+}
+
+#app {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.opponent, .player {
+    text-align: center;
+
+    width: 100%;
+}
+
+.hand {
+    height: 30%;
+    background-color: green;
+}
+
+.cards {
+    height: 20%;
+    background-color: blue;
+}
+
+.card {
+    display: inline-block;
+
+    margin: 0 auto;
+    text-align: left;
+    position: relative;
+    
+    box-sizing: border-box;
+    padding: 10px;
+
+    height: 70%;
+    aspect-ratio: 2 / 3;
+    
+    border: solid;
+    border-radius: 10%;
+
+    background-color: rgb(100, 100, 0);
+
+}
+
+.hand > .card {
+    margin-left: -2.5%;
+
+}
+
+.cards > .card {
+    height: 100%;
+}
+
+.player > .card:hover {
+    cursor: pointer;
+    z-index: 1;
+    background-color: red;
+}
