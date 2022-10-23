@@ -20,21 +20,13 @@ app.listen(port, () => {
 })
 
 wss.on('connection', (socket) => {
-    game.CLIENTS.set(socket, {username: "", lobbyid: ""})
-    console.log('New client!')
+    game.newConnection(socket)
 
     socket.on('message', (message) => {
-        console.log(`New message from a client: ${message}`)
-        game.interpretMessage(message, socket)
+        game.interpretMessage(JSON.parse(message), socket)
     })
 
     socket.on('close', () => {
-        console.log(`A client is gone! Goodbye ${JSON.stringify(game.CLIENTS.get(socket))}!`)
-
-        if (game.LOBBYS.get(game.CLIENTS.get(socket).lobbyid) != null && game.LOBBYS.get(game.CLIENTS.get(socket).lobbyid).players.length <= 1) {
-            lobbys.delete(game.CLIENTS.get(socket).lobbyid)
-            console.log(`${game.CLIENTS.get(socket).lobbyid} has been deleted.`)
-        }
-        game.CLIENTS.delete(socket)
+        game.closeConnection(socket)
     })
 })
