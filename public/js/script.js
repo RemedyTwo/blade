@@ -15,14 +15,16 @@ refreshButton.addEventListener('click', () => {
         type: 'refresh-lobbys'
     }))
 })
-const opponentHand = document.createElement('div')
-const opponentCards = document.createElement('div')
-const playerCards = document.createElement('div')
-const playerHand = document.createElement('div')
-opponentHand.className = 'opponent hand'
-opponentCards.className = 'opponent cards'
-playerCards.className = 'player cards'
-playerHand.className = 'player hand'
+const opponentHandDiv = document.createElement('div')
+const opponentPlayedCardsDiv = document.createElement('div')
+const playerPlayedCardsDiv = document.createElement('div')
+const playerHandDiv = document.createElement('div')
+opponentHandDiv.className = 'opponent hand'
+opponentPlayedCardsDiv.className = 'opponent cards'
+playerPlayedCardsDiv.className = 'player cards'
+playerHandDiv.className = 'player hand'
+
+const LISTENERS = []
 
 document.getElementById('make-lobby').addEventListener('click', () => {
     socket.send(JSON.stringify({
@@ -40,30 +42,29 @@ document.getElementById('search-lobbys').addEventListener('click', () => {
 })
 
 socket.addEventListener('message', (event) => {
-    let message = JSON.parse(event.data)
-
-    switch (message.type) {
+    let data = JSON.parse(event.data)
+    switch (data.type) {
         case 'make-lobby-accepted':
-            app.innerHTML = `<p>Tu es dans le lobby ${message.lobbyid}. En attente d'un joueur...</p>`
+            app.innerHTML = `<p>Tu es dans le lobby ${data.lobbyid}. En attente d'un joueur...</p>`
             break
-
+        
         case 'make-lobby-refused':
             alert('Nom de lobby illégal.')
             break
 
         case 'lobbys-list':
             let list = document.createElement('ul')
-            for (let lobbyId in message.list) {
+            for (let lobbyId in data.list) {
                 let li = document.createElement('li')
                 list.appendChild(li)
 
                 let button = document.createElement('button')
                 button.type = 'button'
-                button.innerHTML = `Join lobby ${message.list[lobbyId]}`
+                button.innerHTML = `Join lobby ${data.list[lobbyId]}`
                 button.addEventListener('click', () => {
                     socket.send(JSON.stringify({
                         type: 'join-lobby',
-                        lobbyid: message.list[lobbyId]
+                        lobbyid: data.list[lobbyId]
                     }))
                 })
                 
@@ -72,55 +73,30 @@ socket.addEventListener('message', (event) => {
             app.replaceChildren(refreshButton, list)
             break
         
-        case 'game-start':
-            for(let i = 0; i < message.playerHand.length; i++) {
-                opponentHand.appendChild(card.cloneNode())
-
-                let playerCard = card.cloneNode()
-                playerCard.innerHTML = message.playerHand[i]
-                playerCard.addEventListener('click', () => {
-                    socket.send(JSON.stringify({
-                        type: 'play-card',
-                        card: i
-                    }))
-                    socket.addEventListener('message', (event) => {
-                        if (JSON.parse(event.data).type != 'play-card-accepted') {
-                            alert('The card selected can not be played.')
-                            return
-                        }
-                        playerCard.style.removeProperty('transform')
-                        playerCard.style.removeProperty('top')
-                        playerCard.style.removeProperty('bottom')
-                        playerCards.appendChild(playerCard)
-                    })
-                })
-                playerHand.appendChild(playerCard)
-            }
-            app.replaceChildren(opponentHand, opponentCards, playerCards, playerHand)
-            sortPlayerHand()
-            updateHandRotation()
+        case 'game-start': // { type: 'game-start', playerHand: [1, 2, 3, 'Bolt', 'Mirror'], opponentHand: 10 }
+            setOpponentHand(data.opponentHand)
+            setPlayerHand(data.playerHand)
+            app.replaceChildren(opponentHandDiv, opponentPlayedCardsDiv, playerPlayedCardsDiv, playerHandDiv)
             break
         
-        case 'play-card-accepted':
-            updateHandRotation()
-            switch (message.card) {
-                case 'Bolt':
-                    opponentCards.removeChild(opponentCards.lastChild)
-                    break
-
-                case 'Mirror':
-                    let tmp = playerCards.innerHTML
-                    playerCards.innerHTML = opponentCards.innerHTML
-                    opponentCards.innerHTML = tmp
-                    break
-            }
+        case 'play-card-accepted': // { type: 'play-card-accepted', cardIndex: 5, card: 'Bolt', playerHand: [1, 2, 'Mirror'] }
+            playerHandDiv.children.item(data.cardIndex).style.removeProperty('transform')
+            playerHandDiv.children.item(data.cardIndex).style.removeProperty('top')
+            playerHandDiv.children.item(data.cardIndex).style.removeProperty('bottom')
+            playerPlayedCardsDiv.appendChild(playerHandDiv.children.item(data.cardIndex))
+            setPlayerHand(data.playerHand)
             break
         
-        case 'play-card-opponent':
-            opponentHand.childNodes[message.cardIndex].innerHTML = message.card
-            opponentHand.childNodes[message.cardIndex].style = ''
-            opponentCards.appendChild(opponentHand.childNodes[message.cardIndex])
-            updateHandRotation()
+        case 'play-card-refused': // { type: 'play-card-refused', cardIndex: 3 }
+            alert('The card selected can not be played.')
+            playerHandDiv.children.item(data.cardIndex).addEventListener('click', () => socket.send(JSON.stringify({ type: 'play-card', cardIndex: data.cardIndex })), {once: true})
+            break
+        
+        case 'play-card-opponent': // { type: 'play-card-opponent', cardIndex: 5, card: 'Bolt' }
+            opponentHandDiv.childNodes[data.cardIndex].innerHTML = data.card
+            opponentHandDiv.childNodes[data.cardIndex].style = ''
+            opponentPlayedCardsDiv.appendChild(opponentHandDiv.childNodes[data.cardIndex])
+            updateOpponentHand()
             break
 
         default: 
@@ -129,36 +105,61 @@ socket.addEventListener('message', (event) => {
     }
 })
 
-/**
- * Set rotation and position of the player and the opponent's cards
- */
-function updateHandRotation() {
+function setPlayerHand(playerHand) {
+    playerHandDiv.textContent = ''
+
     let degree = -(ROTATION / 2)
-    for (let i = 0; i < opponentHand.children.length; i++) {
-        opponentHand.children[i].style.transform = `rotate(${-degree}deg)`
-        opponentHand.children[i].style.bottom = `${Math.abs(degree)}%`
-        degree += ROTATION / (opponentHand.children.length - 1)
+    for(let i = 0; i < playerHand.length; i++) {
+        let playerCard = card.cloneNode()
+        playerCard.innerHTML = playerHand[i]
+        playerCard.style.transform = `rotate(${degree}deg)`
+        playerCard.style.top = `${Math.abs(degree)}%`
+        
+        playerCard.addEventListener('click', () => socket.send(JSON.stringify({ type: 'play-card', cardIndex: i })), {once: true})
+
+        playerHandDiv.appendChild(playerCard)
+        degree += ROTATION / (playerHand.length - 1)
     }
-    
-    degree = -(ROTATION / 2)
-    for (let i = 0; i < playerHand.children.length; i++)
-    {
-        playerHand.children[i].style.transform = `rotate(${degree}deg)`
-        playerHand.children[i].style.top = `${Math.abs(degree)}%`
-        degree += ROTATION / (playerHand.children.length - 1)
+}
+
+function setOpponentHand(n) {
+    opponentHandDiv.textContent = ''
+
+    let degree = -(ROTATION / 2)
+    for (let i = 0; i < n; i++) {
+        let opponentCard = card.cloneNode()
+        opponentCard.style.transform = `rotate(${-degree}deg)`
+        opponentCard.style.bottom = `${Math.abs(degree)}%`
+
+        opponentHandDiv.appendChild(opponentCard)
+        degree += ROTATION / (n - 1)
     }
 }
 
 /**
- * Sort player cards by their number
+ * Set rotation and position of the opponent's cards
  */
-function sortPlayerHand() {
-    let cards = Array.prototype.slice.call(playerHand.children)
-    cards.sort(function(a, b) {
-        return a.innerHTML.localeCompare(b.innerHTML);
-    })
-    
-    for (let i = 0; i < cards.length; i++) {
-        playerHand.appendChild(cards[i])
+function updateOpponentHand() {
+    let degree = -(ROTATION / 2)
+    for (opponentCard of opponentHandDiv.children) {
+        opponentCard.style.transform = `rotate(${-degree}deg)`
+        opponentCard.style.bottom = `${Math.abs(degree)}%`
+        degree += ROTATION / (opponentHandDiv.children.length - 1)
+    }
+}
+
+function updatePlayerHand() {
+    let degree = -(ROTATION / 2)
+    for (let i = 0; i < playerHandDiv.children.length; i++) {
+        let playerCard = playerHandDiv.children.item(i)
+        playerCard.style.transform = `rotate(${degree}deg)`
+        playerCard.style.top = `${Math.abs(degree)}%`
+        degree += ROTATION / (playerHandDiv.children.length - 1)
+
+        playerCard.removeEventListener('click', LISTENERS[i], { once: true })
+        
+        let playCard = () => { socket.send(JSON.stringify({ type: 'play-card', cardIndex: i }))}
+        LISTENERS.push(playCard)
+        playerCard.addEventListener('click', playCard, { once: true })
     }
 }
