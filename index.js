@@ -3,7 +3,7 @@ const webSocket = require('ws')
 const game = require('./app')
 
 const app = express()
-const wss = new webSocket.Server({ 
+const wss = new webSocket.Server({
     port: 8081
 })
 

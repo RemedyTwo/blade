@@ -10,26 +10,67 @@
     height: 100%;
 }
 
-.opponent, .player {
-    text-align: center;
-
-    width: 100%;
-}
-
-.hand {
-    height: 30%;
+.outer-side {
     background-color: green;
 }
 
-.cards {
-    height: 20%;
+#board {
+    height: 44.4%;
     background-color: blue;
+}
+
+.opponent.outer-side {
+    height: 26.4%;
+}
+
+.player.outer-side {
+    height: 29.2%;
+}
+
+.opponent, .player {
+    display: flex;
+}
+
+.hand, .deck {
+    height: 100%;
+    vertical-align: bottom;
+    justify-content: center;
+}
+
+.hand {
+    width: 70%;
+}
+
+.deck {
+    width: 30%;
+    align-items: center;
+}
+
+.inner-side {
+    height: 50%;
+}
+
+.played-cards {
+    width: 40%;
+    height: 100%;
+}
+
+.player.played-cards, .opponent.total {
+    justify-content: left;
+}
+
+.opponent.played-cards, .player.total {
+    justify-content: right;
+}
+
+.total {
+    width: 60%;
+    align-items: center;
 }
 
 .card {
     display: inline-block;
 
-    margin: 0 auto;
     text-align: left;
     position: relative;
     
@@ -42,20 +83,19 @@
     border: solid;
     border-radius: 10%;
 
+    /* background-image: url('../img/back.png'); */
     background-color: rgb(100, 100, 0);
-
 }
 
 .hand > .card {
-    margin-left: -2.5%;
-
+    margin-left: -5%;
 }
 
-.cards > .card {
+.played-cards > .card {
     height: 100%;
 }
 
-.player > .card:hover {
+.player.hand > .card:hover {
     cursor: pointer;
     z-index: 1;
     background-color: red;
