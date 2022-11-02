@@ -69,33 +69,41 @@ SOCKET.addEventListener('message', (event) => {
             APP.replaceChildren(BOARD.content.cloneNode(true))
             setOpponentHand(data.opponentHand)
             setPlayerHand(data.playerHand)
+            break
+        }
+
+        case 'play': { // { type: 'play' }
             addListeners()
             break
         }
 
-        case 'draw-player': { // { type: 'draw-player', card: 5, begin: true/false }
+        case 'draw-player': { // { type: 'draw-player', card: 5, total: 5 }
             APP.querySelector('.player.played-cards').appendChild(createCard(data.card))
-            if (!data.begin)
-                clearListeners()
+            setPlayerTotal(data.total)
             break
         }
 
-        case 'draw-opponent': { // { type: 'draw-opponent', card: 5 }
+        case 'draw-opponent': { // { type: 'draw-opponent', card: 5, total: 5 }
             const opponentPlayedCardsDiv = APP.querySelector('.opponent.played-cards')
             opponentPlayedCardsDiv.appendChild(createCard(data.card))
+            setOpponentTotal(data.total)
             break
         }
 
-        case 'play-card-accepted': {  // { type: 'play-card-accepted', cardIndex: 5, card: 'Bolt' }
+        case 'play-card-accepted': {  // { type: 'play-card-accepted', cardIndex: 5, card: 'Bolt', total: 10 }
+            clearListeners()
+
             const playerHandSelectedCardDiv = APP.querySelector('.player.hand').children.item(data.cardIndex)
             const playerPlayedCardsDiv = APP.querySelector('.player.played-cards')
             
             playerHandSelectedCardDiv.style = ''
             playerPlayedCardsDiv.appendChild(playerHandSelectedCardDiv)
+            setPlayerTotal(data.total)
+
 
             LISTENERS.splice(data.cardIndex, 1)
+
             updatePlayerHand()
-            clearListeners()
             break
         }
 
@@ -107,16 +115,26 @@ SOCKET.addEventListener('message', (event) => {
             break
         }
 
-        case 'play-card-opponent': { // { type: 'play-card-opponent', cardIndex: 5, card: 'Bolt' }
+        case 'play-card-opponent': { // { type: 'play-card-opponent', cardIndex: 5, card: 'Bolt', total: 10 }
             const opponentHandSelectedCardDiv = APP.querySelector('.opponent.hand').children[data.cardIndex]
             const opponentPlayedCardsDiv = APP.querySelector('.opponent.played-cards')
             
-            opponentHandSelectedCardDiv.innerHTML = data.card
+            opponentHandSelectedCardDiv.classList.add(`c${data.card}`)
             opponentHandSelectedCardDiv.style = ''
             opponentPlayedCardsDiv.appendChild(opponentHandSelectedCardDiv)
 
+            setOpponentTotal(data.total)
             updateOpponentHand()
-            addListeners()
+            break
+        }
+
+        case 'win': {
+            alert('You won!')
+            break
+        }
+
+        case 'loose': {
+            alert('You lost!')
             break
         }
 
@@ -173,10 +191,39 @@ function updatePlayerHand() {
     }
 }
 
+function setPlayerTotal(total) {
+    const playerTotal = document.querySelector('.player.total')
+    playerTotal.replaceChildren()
+
+    let numberDiv = document.createElement('div')
+    numberDiv.classList.add('total-value')
+
+    for (const letter of total.toString()) {
+        let currentNumberDiv = numberDiv.cloneNode()
+        currentNumberDiv.classList.add(`t${letter}`)
+        playerTotal.appendChild(currentNumberDiv)
+    }
+}
+
+function setOpponentTotal(total) {
+    const opponentTotal = document.querySelector('.opponent.total')
+    opponentTotal.replaceChildren()
+
+    const numberDiv = document.createElement('div')
+    numberDiv.classList.add('total-value')
+
+    for (const letter of total.toString()) {
+        let currentNumberDiv = numberDiv.cloneNode()
+        currentNumberDiv.classList.add(`t${letter}`)
+        opponentTotal.appendChild(currentNumberDiv)
+    }
+}
+
 /**
  * Add event listeners to each card of the player's hand
  */
 function addListeners() {
+    clearListeners()
     const playerHandChildren = APP.querySelector('.player.hand').children
     for (let index in playerHandChildren) {
         let playCard = () => { 
@@ -199,9 +246,11 @@ function clearListeners() {
         cardDiv.removeEventListener('click', LISTENERS.shift(), { once: true })
 }
 
-function createCard(type = "") {
+function createCard(type = '') {
     const cardDiv = document.createElement('div')
-    cardDiv.className = 'card'
-    cardDiv.textContent = type
+    cardDiv.classList.add('card')
+    if (type != '') {
+        cardDiv.classList.add(`c${type}`)
+    }
     return cardDiv
 }

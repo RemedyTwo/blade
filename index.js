@@ -23,7 +23,9 @@ wss.on('connection', (socket) => {
     game.newConnection(socket)
 
     socket.on('message', (message) => {
-        game.interpretMessage(JSON.parse(message), socket)
+        let data = JSON.parse(message)
+        console.log(data)
+        game.interpretMessage(data, socket)
     })
 
     socket.on('close', () => {

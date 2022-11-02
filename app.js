@@ -27,7 +27,9 @@ const CARDS = {
     '6' : 6, 
     '7' : 7, 
     'Bolt' : 1, 
-    'Mirror' : 1
+    'Mirror' : 1,
+    'Blast' : 1,
+    'Force': 1
 }
 const PER_CARD_AMOUNT = 6
 const DECK = new Array(PER_CARD_AMOUNT).fill(Object.keys(CARDS)).flat()
@@ -99,67 +101,29 @@ const MESSAGE_INTERPRETATION = {
             }))
         }
 
-        let player1Socket = LOBBYS.get(data.lobbyid).players[0], player2Socket = LOBBYS.get(data.lobbyid).players[1]
-        let player1Draw = null, player2Draw = null
-        // set first draw
-        while (player1Draw == player2Draw) {
-            player1Draw = draw(player1Socket), player2Draw = draw(player2Socket)
-            if (CARDS[player1Draw] == CARDS[player2Draw]) {
-                player1Socket.send(JSON.stringify({
-                    type: 'draw-tie',
-                    playerCard: player1Draw,
-                    opponentCard: player2Draw
-                }))
-                player2Socket.send(JSON.stringify({
-                    type: 'draw-tie',
-                    playerCard: player2Draw,
-                    opponentCard: player1Draw 
-                }))
-            }
-            else {
-                // set first player
-                LOBBYS.get(data.lobbyid).turn = CARDS[player1Draw] > CARDS[player2Draw] ? 0 : 1
-                player1Socket.send(JSON.stringify({
-                    type: 'draw-player',
-                    card: player1Draw,
-                    begin: LOBBYS.get(data.lobbyid).turn == 0 ? false : true
-                }))
-                player1Socket.send(JSON.stringify({
-                    type: 'draw-opponent',
-                    card: player2Draw
-                }))
-                player2Socket.send(JSON.stringify({
-                    type: 'draw-player',
-                    card: player2Draw,
-                    begin: LOBBYS.get(data.lobbyid).turn == 0 ? true : false
-                }))
-                player2Socket.send(JSON.stringify({
-                    type: 'draw-opponent',
-                    card: player1Draw
-                }))
-            }
-        }
-        
-        
+        tie(data.lobbyid)
     },
 
-    'play-card': (data, socket) => { // {type: 'play-card', cardIndex: 7}
-        // check if played card is legal and player's turn is good
-        if (data.cardIndex < 0 || data.cardIndex >= CLIENTS.get(socket).hand.length || socket == LOBBYS.get(CLIENTS.get(socket).lobbyid).players[LOBBYS.get(CLIENTS.get(socket).lobbyid).turn]) {
-            socket.send(JSON.stringify({
+    'play-card': (data, playerSocket) => { // {type: 'play-card', cardIndex: 7}
+        let currentLobby = LOBBYS.get(CLIENTS.get(playerSocket).lobbyid)
+        let opponentSocket = currentLobby.players[1 - currentLobby.turn]
+
+        // check if played card is legal and it is in fact player's turn
+        if (data.cardIndex < 0 || data.cardIndex >= CLIENTS.get(playerSocket).hand.length || playerSocket != currentLobby.players[currentLobby.turn]) {
+            playerSocket.send(JSON.stringify({
                 type: 'play-card-refused',
                 cardIndex: data.cardIndex 
             }))
             return
         }
     
-        let playedCard = CLIENTS.get(socket).hand[data.cardIndex]
-        let opponentSocket = LOBBYS.get(CLIENTS.get(socket).lobbyid).players.find(element => element != socket)
+        let playedCard = CLIENTS.get(playerSocket).hand[data.cardIndex]
     
+        // put card in playedCards
         switch (playedCard) {
             case 'Bolt':
                 if (CLIENTS.get(opponentSocket).playedCards.length == 0) {
-                    return socket.send(JSON.stringify({
+                    return playerSocket.send(JSON.stringify({
                         type: 'play-card-refused',
                         cardIndex: data.cardIndex
                     }))
@@ -170,32 +134,33 @@ const MESSAGE_INTERPRETATION = {
     
             case 'Mirror':
                 let tmp = CLIENTS.get(opponentSocket).playedCards
-                CLIENTS.get(opponentSocket).playedCards = CLIENTS.get(socket).playedCards
-                CLIENTS.get(socket).playedCards = tmp
+                CLIENTS.get(opponentSocket).playedCards = CLIENTS.get(playerSocket).playedCards
+                CLIENTS.get(playerSocket).playedCards = tmp
                 break
     
             default: // number cards
-                CLIENTS.get(socket).playedCards.push([playedCard, 1])
+                CLIENTS.get(playerSocket).playedCards.push([playedCard, 1])
                 break
         }
-        CLIENTS.get(socket).hand.splice(data.cardIndex, 1)
-        socket.send(JSON.stringify({
+        CLIENTS.get(playerSocket).hand.splice(data.cardIndex, 1)
+        
+        let playerValue = getPlayedCardsTotal(playerSocket), opponentValue = getPlayedCardsTotal(opponentSocket)
+        playerSocket.send(JSON.stringify({
             type: 'play-card-accepted',
             cardIndex: data.cardIndex,
-            card: playedCard
+            card: playedCard,
+            total: playerValue
         }))
         opponentSocket.send(JSON.stringify({
             type: 'play-card-opponent',
             cardIndex: data.cardIndex,
-            card: playedCard
+            card: playedCard,
+            total: playerValue
         }))
-        // switch turn
-        LOBBYS.get(CLIENTS.get(socket).lobbyid).turn = 1 - LOBBYS.get(CLIENTS.get(socket).lobbyid).turn
-    
-        let opponentValue = getPlayedCardsValue(CLIENTS.get(opponentSocket).playedCards)
-        let playerValue = getPlayedCardsValue(CLIENTS.get(socket).playedCards)
+
+        // checks if someone won or tie
         if (playerValue < opponentValue) {
-            socket.send(JSON.stringify({
+            playerSocket.send(JSON.stringify({
                 type: 'loose'
             }))
             opponentSocket.send(JSON.stringify({
@@ -203,34 +168,78 @@ const MESSAGE_INTERPRETATION = {
             }))
         }
         else if (playerValue == opponentValue) {
-            let playerCard = '', opponentCard = ''
-            while (playerCard == opponentCard) {
-                playerCard = draw(playerSocket)
-                opponentCard = draw(opponentSocket)
-                socket.send(JSON.stringify({
-                    type: 'tie',
-                    card: playerCard
-                }))
-                opponentSocket.send(JSON.stringify({
-                    type: 'tie',
-                    card: opponentCard
-                }))
-            }
-            CLIENTS.get(socket).playedCards = [playerCard]
-            opponentPlayedCards = [opponentCard]
+            tie(CLIENTS.get(playerSocket).lobbyid)
         }
-    },
+        else {
+            currentLobby.turn = 1 - currentLobby.turn
+            currentLobby.players[currentLobby.turn].send(JSON.stringify({
+                type: 'play'
+            }))
+        }
+
+        // switch turn
+
+    }
 }
 
 function draw(socket, n = 1) {
+    if (CLIENTS.get(socket).deck.length <= 0) {
+        return null
+    }
     drawnCard = CLIENTS.get(socket).deck.splice(0, n)
     return n == 1 ? drawnCard[0] : drawnCard
 }
 
-function getPlayedCardsValue(playedCards) {
+function tie(lobbyid) {
+    sockets = LOBBYS.get(lobbyid).players
+    do {
+        var player1Draw = draw(sockets[0]), player2Draw = draw(sockets[1])
+        if (CARDS[player1Draw] == CARDS[player2Draw]) {
+            sockets[0].send(JSON.stringify({
+                type: 'draw-tie',
+                playerCard: player1Draw,
+                opponentCard: player2Draw
+            }))
+            sockets[1].send(JSON.stringify({
+                type: 'draw-tie',
+                playerCard: player2Draw,
+                opponentCard: player1Draw 
+            }))
+        }
+    } while (CARDS[player1Draw] == CARDS[player2Draw])
+    CLIENTS.get(sockets[0]).playedCards.push([player1Draw, 1])
+    CLIENTS.get(sockets[1]).playedCards.push([player2Draw, 1])
+    sockets[0].send(JSON.stringify({
+        type: 'draw-player',
+        card: player1Draw,
+        total: CARDS[player1Draw]
+    }))
+    sockets[0].send(JSON.stringify({
+        type: 'draw-opponent',
+        card: player2Draw,
+        total: CARDS[player2Draw]
+    }))
+    sockets[1].send(JSON.stringify({
+        type: 'draw-player',
+        card: player2Draw,
+        total: CARDS[player2Draw]
+    }))
+    sockets[1].send(JSON.stringify({
+        type: 'draw-opponent',
+        card: player1Draw,
+        total: CARDS[player1Draw]
+    }))
+    LOBBYS.get(lobbyid).turn = CARDS[player1Draw] > CARDS[player2Draw] ? 1 : 0
+    sockets[LOBBYS.get(lobbyid).turn].send(JSON.stringify({
+        type: 'play'
+    }))
+}
+
+function getPlayedCardsTotal(socket) {
+    let playedCards = CLIENTS.get(socket).playedCards
     let value = 0
-    for (cardDiv of playedCards)
-        value += CARDS[cardDiv]
+    for (let card of playedCards)
+        value += CARDS[card[0]]
     return value
 }
 
@@ -240,7 +249,6 @@ function newConnection(socket) {
 }
 
 function interpretMessage(data, socket) {
-    console.log(data)
     try {
         MESSAGE_INTERPRETATION[data.type](data, socket)
     }

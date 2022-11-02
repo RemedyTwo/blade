@@ -50,41 +50,39 @@
     height: 50%;
 }
 
+.player.inner-side {
+    justify-content: flex-end;
+}
+
 .played-cards {
     width: 40%;
     height: 100%;
 }
 
-.player.played-cards, .opponent.total {
+.player.played-cards {
     justify-content: left;
 }
 
-.opponent.played-cards, .player.total {
+.opponent.played-cards {
     justify-content: right;
 }
 
 .total {
-    width: 60%;
+    width: 20%;
     align-items: center;
+    justify-content: center;
 }
 
 .card {
-    display: inline-block;
-
-    text-align: left;
     position: relative;
-    
-    box-sizing: border-box;
-    padding: 10px;
+    background: url('../img/spritesheet.png');
+    background-size: calc(1024 / 128 * 100%) calc(2048 / 168 * 100%); /* 128px 168px */
+    background-position: calc(0 / (1024 - 128) * 100%) calc(1024 / (2048 - 168) * 100%); /* 0px 1024px */
+    aspect-ratio: 128 / 168;
+}
 
-    height: 70%;
-    aspect-ratio: 2 / 3;
-    
-    border: solid;
-    border-radius: 10%;
-
-    /* background-image: url('../img/back.png'); */
-    background-color: rgb(100, 100, 0);
+.outer-side .card {
+    height: 80%;
 }
 
 .hand > .card {
@@ -95,8 +93,56 @@
     height: 100%;
 }
 
+.opponent.played-cards > .card {
+    margin-left: -15%;
+}
+
+.player.played-cards > .card {
+    margin-right: -15%;
+}
+
 .player.hand > .card:hover {
     cursor: pointer;
     z-index: 1;
-    background-color: red;
+    /* background: url(../img/spritesheet.png) 144px 948px */
 }
+
+.c1 { background-position-x: calc(128 / (1024 - 128) * 100%); }
+.c2 { background-position-x: calc(256 / (1024 - 128) * 100%); }
+.c3 { background-position-x: calc(384 / (1024 - 128) * 100%); }
+.c4 { background-position-y: calc(1192 / (2048 - 168) * 100%); } /* 1192 */
+.c5 { background-position: calc(128 / (1024 - 128) * 100%) calc(1192 / (2048 - 168) * 100%); }
+.c6 { background-position: calc(256 / (1024 - 128) * 100%) calc(1192 / (2048 - 168) * 100%); }
+.c7 { background-position: calc(384 / (1024 - 128) * 100%) calc(1192 / (2048 - 168) * 100%); }
+.cBolt { background-position-y: calc(1360 / (2048 - 168) * 100%); }
+.cMirror { background-position: calc(128 / (1024 - 128) * 100%) calc(1360 / (2048 - 168) * 100%); }
+.cBlast { background-position: calc(256 / (1024 - 128) * 100%) calc(1360 / (2048 - 168) * 100%); }
+.cForce { background-position: calc(384 / (1024 - 128) * 100%) calc(1360 / (2048 - 168) * 100%); }
+/* .blank { background-position-y: 0px -1528px; } */
+
+/* .player.hand > .c1:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -128px -1024px; }
+.player.hand > .c2:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -256px -1024px; }
+.player.hand > .c3:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -384px -1024px; }
+.player.hand > .c4:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, 0px -1192px; }
+.player.hand > .c5:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -128px -1192px; }
+.player.hand > .c6:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -256px -1192px; }
+.player.hand > .c7:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -384px -1192px; }
+.player.hand > .cBolt:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, 0px -1360px; }
+.player.hand > .cMirror:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -128px -1360px; }
+.player.hand > .cBlast:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -256px -1360px; }
+.player.hand > .cForce:hover { background-image: url('../img/spritesheet.png'), url('../img/spritesheet.png'); background-position: 144px 948px, -384px -1360px; } */
+
+.total-value {
+    background: url('../img/spritesheet.png') 512px 1024px;
+    width: 48px;
+    height: 58px;
+}
+.t1 { background-position-x: -560px; }
+.t2 { background-position-x: -608px; }
+.t3 { background-position-x: -656px; }
+.t4 { background-position-x: -704px; }
+.t5 { background-position-x: -752px; }
+.t6 { background-position-x: -800px; }
+.t7 { background-position-x: -848px; }
+.t8 { background-position-x: -896px; }
+.t9 { background-position-x: -944px; }
